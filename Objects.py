@@ -375,7 +375,7 @@ def PassengerGenerator(deltaT, row, seat):
     walkspeed = random.uniform(0.27, 0.44)  # meter per second
 
     # Calculated attributes and containing these attributes
-    walking_time = (0.7112/walkspeed) * row + 4*(0.4572/walkspeed)
+    walking_time = (0.7112/walkspeed) * (row + 3)
     dict_res = {
         "board_time_cum": 0,
         "pass_start_relative": deltaT,
@@ -385,6 +385,7 @@ def PassengerGenerator(deltaT, row, seat):
         "seat": seat,
         "has_luggage": has_luggage,
         "walkspeed": walkspeed,
+        "unit_walktime": 0.7112/walkspeed,
         "aisle_pos": 0,
         "timespent": {
             "entrance": enter_time,
@@ -456,36 +457,62 @@ def SeatingManager(arriving_passenger, seating_matrix):
     # Sum up the boarding times
     passenger_totaltime = arriving_passenger["timespent"]["seating_time"] + arriving_passenger["timespent"]["luggage_stash"] + arriving_passenger["timespent"]["entrance"] + arriving_passenger["timespent"]["walking"] + arriving_passenger["timespent"]["waiting"]
     arriving_passenger["pass_end_relative"] += passenger_totaltime
+    arriving_passenger["board_time_cum"] = passenger_totaltime
     # Seat the arriving into seating matrix
     seating_matrix[row - 1][seat - 1] = arriving_passenger
     # Seating completed
 
 
-def AisleManager(aisle):
+def WalkingImplement(aisle, ind_from, ind_to):
+    passenger = aisle[ind_from][0]
+    passenger["aisle_pos"] = ind_to
+    walktime = passenger["unit_walktime"]
+    aisle[ind_to][0] = passenger
+    aisle[ind_from][0] = {}
+    return aisle, walktime
+
+
+def AisleManager(type):
+    # Initialization
+    aisle = np.full((34, 1), {})
+    arrival_queue = BoardingStrat(type)
+    TIME = 0
+    # Initial boarding of first passenger
+    aisle[0][0] = PassengerGenerator(TIME, arrival_queue[0][0], arrival_queue[0][1])
+    aisle, walktime = WalkingImplement(aisle, 0, 1)
+    TIME += aisle[0][0]["timespent"]["entrance"] + walktime
+    arrival_queue.pop(0)
+
     return None
+
+
+AisleManager("random")
+
+
+
 
 # Initialization and magic numbers
 aisle = np.full((35,1), {})
-print(aisle)
+print(aisle[34][0])
 
 aisle[20] = PassengerGenerator(2, 24, 3)
-print(aisle)
+#print(aisle)
 
 seating_matrix = np.full((30,6), {})
 
 enter_time = random.randrange(1,6)
-print(enter_time)
+#print(enter_time)
 
 walkspeed = random.uniform(0.27, 0.44)  # meter per second
-print(walkspeed)
+#print(walkspeed)
 
 lsit = [[2,3,4],
         [3,4,5],
         [4,5,6]]
 
-print(lsit[1][1])
+#print(lsit[1][1])
 
 t = [{}, {"e": 1}, {}]
-print(bool(t[0]))
-print(bool(t[1]))
-print(bool(t[2]))
+#print(bool(t[0]))
+#print(bool(t[1]))
+#print(bool(t[2]))
