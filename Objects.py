@@ -367,10 +367,12 @@ def BoardingStrat(type):
 def SeatingManager(arriving_passenger, seating_matrix):
     seat = arriving_passenger["seat"]
     row = arriving_passenger["row"]
+    luggage_time = arriving_passenger["timespent"]["luggage_stash"]
     if seat==3 or seat==4:
         # Arriving has aisle seat
         aisle_seating = random.uniform(2, 5)  # Aisle seating time (aisle can be taken regardless of people already sitting in the row
         arriving_passenger["timespent"]["seating_time"] += aisle_seating
+        seating_time = aisle_seating
     elif seat==2 or seat==5:
         # Arriving has middle seat
         if seat==2:
@@ -383,9 +385,11 @@ def SeatingManager(arriving_passenger, seating_matrix):
             middle_seating = random.uniform(3, 6)  # middle seating time
             seating_matrix[row-1][target_seat-1]["timespent"]["standup"] += aisle_seating*2 + middle_seating
             arriving_passenger["timespent"]["seating_time"] += middle_seating+aisle_seating
+            seating_time = aisle_seating*2 + middle_seating
         else:
             middle_seating = random.uniform(3, 6)  # middle seating time
             arriving_passenger["timespent"]["seating_time"] += middle_seating
+            seating_time = middle_seating
     else:
         # Arriving has window seat
         if seat==1:
@@ -403,12 +407,14 @@ def SeatingManager(arriving_passenger, seating_matrix):
                 arriving_passenger["timespent"]["seating_time"] += window_seating + aisle_seating + middle_seating
                 seating_matrix[row - 1][target_aisle - 1]["timespent"]["standup"] += aisle_seating*2 + middle_seating*2 + window_seating
                 seating_matrix[row - 1][target_middle - 1]["timespent"]["standup"] += middle_seating * 2 + window_seating
+                seating_time = aisle_seating*2 + middle_seating*2 + window_seating
             else:
                 # Only aisle seat is taken
                 aisle_seating = random.uniform(2, 5)  # Standup time of the person in the aisle seat
                 window_seating = random.uniform(4, 7)  # window seating time
                 seating_matrix[row - 1][target_aisle - 1]["timespent"]["standup"] += aisle_seating * 2 + window_seating
                 arriving_passenger["timespent"]["seating_time"] += window_seating + aisle_seating
+                seating_time = aisle_seating * 2 + window_seating
         else:
             if bool(seating_matrix[row - 1][target_middle - 1]) is True:
                 # Only middle seat is taken
@@ -416,15 +422,19 @@ def SeatingManager(arriving_passenger, seating_matrix):
                 window_seating = random.uniform(4, 7)  # window seating time
                 seating_matrix[row - 1][target_middle - 1]["timespent"]["standup"] += middle_seating * 2 + window_seating
                 arriving_passenger["timespent"]["seating_time"] += window_seating + middle_seating
+                seating_time = middle_seating * 2 + window_seating
             else:
                 window_seating = random.uniform(4, 7)  # window seating time
                 arriving_passenger["timespent"]["seating_time"] += window_seating
+                seating_time = window_seating
     # Sum up the boarding times
     passenger_totaltime = arriving_passenger["timespent"]["seating_time"] + arriving_passenger["timespent"]["luggage_stash"] + arriving_passenger["timespent"]["entrance"] + arriving_passenger["timespent"]["walking"] + arriving_passenger["timespent"]["waiting"]
     arriving_passenger["pass_end_relative"] += passenger_totaltime
     arriving_passenger["board_time_cum"] = passenger_totaltime
     # Seat the arriving into seating matrix
     seating_matrix[row - 1][seat - 1] = arriving_passenger
+    # Return the calculated total aisle time
+    return luggage_time+seating_time
     
     
 # !!!!!!!!!!!!!!!!!!!!!!!!!!! FROM HERE THE CODE DEVIATES FROM DAVID'S LATEST PUBLISH ON 30/03   !!!!!!!!!!!!!!!!!!!!!!!!!!! 
@@ -460,8 +470,7 @@ def PassengerGenerator(ID, row, seat):
             "waiting": 0,
             "luggage_stash": luggage_stash,
             "seating_time": 0,
-            "standup": 0,
-            
+            "standup": 0
         }
     }
     return dict_res
