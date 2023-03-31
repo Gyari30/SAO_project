@@ -495,7 +495,81 @@ def Passenger_event(ID, timer):
     return{'ID': ID, 'timer' : timer,}
 
 
+def BoardingSimulator9000(current_time, passengers, aisle, events):
+    
+    # Step 1: Identify the next event 
+    min_timer = min(events, key = lambda x: x['timer'])['timer']    # Find the time to the next event
+    # Retrieve the event list index of the next event (by matching the smallest timer)
+    action_index = next((index for (index, e) in enumerate(events) if e["timer"] == min_timer), None) 
+    
+    current_time = current_time + min_timer # Update current time
+    for i in range(len(events)):          # Update the other event timers.
+        events[i]['timer'] = events[i]['timer'] - min_timer
+        
+    # Step 2: Execute the next event 
+    # First we define what happens if the event is a new arrival
+    if events[action_index]['ID'] == 'Arrival':
+        # In case the first spot on the aisle is occupied, the arrival is delayed.
+        if bool(aisle[0]):
+            events[action_index]['timer'] = 1   # Setting the delay arbitrarily to 1 second, NEED TO DISCUSS AND UPDATE.
+        else:
+            events[action_index]['timer'] = random.expovariate(1/mu_arrival) # Otherwise draw from an exp. distribution with mean 2 ALSO NEED TO DISCUSS.
+            New_arrival(passengers, aisle, current_time)    # And let the new passenger arrive.
+        # If all passengers are in the plane, remove the arrival event from the event list.        
+        if all(p['aisle_pos'] is not None for p in passengers):
+            del events[action_index]
+        
+    else: # If we are not dealing with a new arrival, we must be dealing with a passenger.
+        # Designate the passenger that is going to move.
+        pass_index = next((index for (index, d) in enumerate(passengers) if d["ID"] == events[action_index]['ID']), None)
+        
+        # First we check if the passenger has been seated. If so, we remove the passenger's actions from the event list.
+        if passengers[pass_index]['seated'] == True:
+            del events[action_index]
+            print(f"Passenger {passengers[pass_index]['ID']} has been seated!")
+        
+        else:    # If not yet seated, the passenger will try to move up a space on the aisle.
+            aisle_position = passengers[pass_index]['aisle_pos']    # Retrieve his position on the aisle.
+            
+            # If the next space on the aisle is occupied, the passenger needs to wait.
+            # The way it is coded here, the waiting time is basically the movement resetting. I think this is the right way to go.
+            if bool(aisle[aisle_position + 1]):
+                # Taking into account smaller tiles at the beginning of the aisle.
+                if aisle_position < l_aisle - nrows:    
+                    # Schedule next movement
+                    events[action_index]['timer'] = passengers[pass_index]['walkspeed']['aisle_begin']
+                    # Update waiting time.
+                    passengers[pass_index]['timespent']['waiting'] = passengers[pass_index]['timespent']['waiting'] + passengers[pass_index]['walkspeed']['aisle_begin']
+                # Now for the larger aisle tiles at the seats.
+                else:           
+                    events[action_index]['timer'] = passengers[pass_index]['walkspeed']['aisle_seats']
+                    passengers[pass_index]['timespent']['waiting'] = passengers[pass_index]['timespent']['waiting'] + passengers[pass_index]['walkspeed']['aisle_seats']
+            
+            # If the next space on the aisle is vacant, the passenger moves.
+            else:
+                aisle[aisle_position] = 0
+                aisle[aisle_position + 1] = 1
+                passengers[pass_index]['aisle_pos'] = aisle_position + 1
+                
+                # If he has not arrived at his row number yet, we simply schedule his next movement.
+                if not passengers[pass_index]['aisle_pos'] == passengers[pass_index]['row'] + l_aisle - nrows:
+                    # Again accounting for different tile sizes. Some duplicate code cannot be avoided here.
+                    if aisle_position < l_aisle - nrows:    
+                        events[action_index]['timer'] = passengers[pass_index]['walkspeed']['aisle_begin']
+                    else: 
+                        events[action_index]['timer'] = passengers[pass_index]['walkspeed']['aisle_seats']
+                
+                # Now for something very important: if the passenger arrives at the row of his seat he needs to sit!!!!!! FCKKKK
+                else:
+                    # !!!!!!!!!!!!!!!!!!!       READ LINE BELOW     !!!!!!!!!!!!!!!!!!!
+                    # The SeatingManager function needs to be updated such that it returns the time it takes for the passenger to get seated.
+                    # This means that the SeatingManager also needs to incorporate luggage delay.
+                    # events[action_index]['timer'] = SeatingManager(passengers[pass_index], seating_matrix)
+                    passengers[pass_index]['seated'] == True
 
+def SimulationExecutor(current_time, passengers, aisle, events):    # Should UPDATE this to include the boarding strategies to form the passengers list.
+    while len(events)>0:     # Once everybody is seated there are no more scheduled events and the simulation is done. 
+        BoardingSimulator9000(current_time, passengers, aisle, events)
 
 # Magic numbers
 
@@ -510,6 +584,8 @@ l_aisle = 35
 size_aisle_seats = 0.7112
 size_aisle_begin = 0.4572
 
+# Mean arrival delay (in seconds)
+mu_arrival = 2
 
 
 
@@ -527,6 +603,8 @@ for i in range(nrows):
         passengers.append(PassengerGenerator(ID, i+1, q+1))
         
 
+passengers[0]
+
 
 # Initializing the aisle
 # The aisle is a binary vector, where '1' designates occupancy and '0' vacancy.
@@ -541,88 +619,16 @@ current_time = 0
 
 # Initializing the event list. At first the only active event is that of the next arrival.
 # As passengers enter the plane, they too get their separate event.
-events = [{'ID': 'Arrival', 'timer' : random.expovariate(0.5)}]
+events = [{'ID': 'Arrival', 'timer' : random.expovariate(1/mu_arrival)}]
 
 
 
-#########################################################
-# Identifying the next event 
 
-min_timer = min(events, key = lambda x: x['timer'])['timer']    # Find the time to the next event
 
-# Retrieve the event list index of the next event (by matching the smallest timer)
-action_index = next((index for (index, d) in enumerate(events) if d["timer"] == min_timer), None) 
 
-current_time = current_time + min_timer # Update current time
 
-for i in range(len(events)):          # Update the other event timers.
-    events[i]['timer'] = events[i]['timer'] - min_timer
-    
-    
-    
-# Executing next event
-
-# First we define what happens if the event is a new arrival
-if events[action_index]['ID'] == 'Arrival':
-    # In case the first spot on the aisle is occupied, the arrival is delayed.
-    if bool(aisle[0]):
-        events[action_index]['timer'] = 1   # Setting the delay arbitrarily to 1 second, NEED TO DISCUSS AND UPDATE.
-    else:
-        events[action_index]['timer'] = random.expovariate(0.5) # Otherwise draw from an exp. distribution with mean 2 ALSO NEED TO DISCUSS.
-        New_arrival(passengers, aisle, current_time)    # And let the new passenger arrive.
-    # If all passengers are in the plane, remove the arrival event from the event list.        
-    if all(d['aisle_pos'] is not None for d in passengers):
-        del events[action_index]
-    
-else: # If we are not dealing with a new arrival, we must be dealing with a passenger.
-
-    # Designate the passenger that is going to move.
-    pass_index = next((index for (index, d) in enumerate(passengers) if d["ID"] == events[action_index]['ID']), None)
-    
-    # First we check if the passenger has been seated. If so, we remove the passenger from the event list
-    if passengers[pass_index]['seated'] == True:
-        del events[action_index]
-        print(f"Passenger {passengers[pass_index]['ID']} has been seated!")
-    else:    
-    
-        aisle_position = passengers[pass_index]['aisle_pos']    # Retrieve his position on the aisle.
-        
-        # If the next space on the aisle is occupied, the passenger needs to wait.
-        # The way it is coded here, the waiting time is basically the movement resetting. I think this is the right way to go.
-        if bool(aisle[aisle_position + 1]):
-            # Taking into account smaller tiles at the beginning of the aisle.
-            if aisle_position < l_aisle - nrows:    
-                # Schedule next movement.
-                events[action_index]['timer'] = passengers[pass_index]['walkspeed']['aisle_begin']
-                # Update waiting time.
-                passengers[pass_index]['timespent']['waiting'] = passengers[pass_index]['timespent']['waiting'] + passengers[pass_index]['walkspeed']['aisle_begin']
-            # Now for the larger aisle tiles at the seats.
-            else:           
-                events[action_index]['timer'] = passengers[pass_index]['walkspeed']['aisle_seats']
-                passengers[pass_index]['timespent']['waiting'] = passengers[pass_index]['timespent']['waiting'] + passengers[pass_index]['walkspeed']['aisle_seats']
-        
-        # If the next space on the aisle is vacant, the passenger moves.
-        else:
-            aisle[aisle_position] = 0
-            aisle[aisle_position + 1] = 1
-            passengers[pass_index]['aisle_pos'] = aisle_position + 1
-            
-            # If he has not arrived at his row number yet, we simply schedule his next movement.
-            if not passengers[pass_index]['aisle_pos'] == passengers[pass_index]['row']:
-                # Again accounting for different tile sizes. Some duplicate code cannot be avoided here.
-                if aisle_position < l_aisle - nrows:    
-                    events[action_index]['timer'] = passengers[pass_index]['walkspeed']['aisle_begin']
-                else: 
-                    events[action_index]['timer'] = passengers[pass_index]['walkspeed']['aisle_seats']
-            
-            # Now for something very important: if the passenger arrives at the row of his seat he needs to sit!!!!!! FCKKKK
-            else:
-                # !!!!!!!!!!!!!!!!!!!       READ LINE BELOW     !!!!!!!!!!!!!!!!!!!
-                # The SeatingManager function needs to be updated such that it returns the time it takes for the passenger to get seated.
-                # This means that the SeatingManager also needs to incorporate luggage delay.
-                # events[action_index]['timer'] = SeatingManager(passengers[pass_index], seating_matrix)
-                passengers[pass_index]['seated'] == True
-
+# Run the simulation!
+# SimulationExecutor(current_time, passengers, aisle, events)
 
 
 
