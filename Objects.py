@@ -1,6 +1,7 @@
 import numpy as np
 import numpy.random as rnd
 import random
+import time
 
 
 def BoardingStrat(type):
@@ -440,8 +441,8 @@ def SeatingManager(arriving_passenger, seating_matrix, current_time):
                 
     # Setting time measures.
     aisle_occupancy_time = arriving_passenger["timespent"]["luggage_stash"] + seating_time
-    arriving_passenger["time_seated"] = current_time + arriving_passenger["timespent"]["luggage_stash"] + arriving_passenger["timespent"]["seating_time"]
-    arriving_passenger["board_time_cum"] = arriving_passenger["time_seated"] - arriving_passenger["time_entrance"]
+    arriving_passenger["timespent"]["time_seated"] = current_time + arriving_passenger["timespent"]["luggage_stash"] + arriving_passenger["timespent"]["seating_time"]
+    arriving_passenger["timespent"]["board_time_cum"] = arriving_passenger["timespent"]["time_seated"] - arriving_passenger["timespent"]["time_entrance"]
     
     # Seat the arriving passenger in the seating matrix
     seating_matrix[row - 1][seat - 1] = arriving_passenger
@@ -464,9 +465,6 @@ def PassengerGenerator(ID, row, seat):
     # Calculated attributes and containing these attributes
     walking_time = (0.7112/walkspeed) * row + 4*(0.4572/walkspeed)
     dict_res = {
-        "board_time_cum": None,
-        "time_entrance": None,
-        "time_seated": None,
         "row": row,
         "seat": seat,
         "has_luggage": has_luggage,
@@ -476,6 +474,9 @@ def PassengerGenerator(ID, row, seat):
         "seated": False,
         "ID": ID,
         "timespent": {
+            "board_time_cum": None,
+            "time_entrance": None,
+            "time_seated": None,
             "walking": walking_time,
             "waiting": 0,
             "luggage_stash": luggage_stash,
@@ -489,15 +490,12 @@ def PassengerGenerator(ID, row, seat):
 
 
 def New_arrival(passengers, aisle, current_time, events):
-    # If the first position in the aisle is vacant, give that position to the first passenger 
-    # in the passengers that had not yet been assigned a spot in the aisle.
-    if bool(aisle[0]):
-        print('Aisle is fully occupied, no new passenger can enter. THIS SHOULD NOT OCCUR')
+    # We find the first passenger on the passengers list that has not yet been assigned a spot in the aisle.
     for i in range(len(passengers)):
         if passengers[i]['aisle_pos']==None:
             while aisle[0] == 0:
                 passengers[i]['aisle_pos'] = 0
-                passengers[i]['time_entrance'] = current_time
+                passengers[i]['timespent']['time_entrance'] = current_time
                 aisle[0] = 1
                 # Make a new entry for the passenger in the event list
                 pass_event = Passenger_event(passengers[i]['ID'], passengers[i]['walkspeed']['aisle_begin'])
@@ -543,7 +541,6 @@ def BoardingSimulator9000(current_time, passengers, aisle, events, seating_matri
         # First we check if the passenger has already been seated. If so, we remove the passenger's actions from the event list.
         if passengers[pass_index]['seated'] == True:
             del events[action_index]
-            print(f"Passenger {passengers[pass_index]['ID']} has been seated!")
             # And his space on the aisle is cleared.
             aisle[aisle_position] = 0
         
@@ -601,15 +598,47 @@ def SimulationExecutor(strategy, nrows, nseats, l_aisle, size_aisle_seats, size_
     # Execution
     while len(events)>0:                            # Once everybody is seated there are no more scheduled events and the simulation is done. 
         BoardingSimulator9000(current_time, passengers, aisle, events, seating_matrix, mu_arrival)
+    
+    return seating_matrix
+        
 
+
+def Simulation_analysis(strategies, nrows, nseats, l_aisle, size_aisle_seats, size_aisle_begin, mu_arrival):
+    
+    # For each strategy and for each time measure I want a list that states the measured times for all passengers if all iterations. 
+    # So for 100 iterations each list should contain 180*100 = 18000 observations.
+    
+    # Setting up output structure
+    # Running simulation once for setting up the output structure.
+    seating_matrix = SimulationExecutor(strategies[0], nrows, nseats, l_aisle, size_aisle_seats, size_aisle_begin, mu_arrival)
+    zmat = seating_matrix.reshape(-1)
+    time_measures = []
+    for strategy in strategies:
+        time_measures.append({strategy : {key : [] for key in zmat[0]['timespent']}})
+    
+    # Saving output to output structure.
+    for strat in enumerate(strategies):
+        start = time.time()
+        for i in range(nsims):
+            seating_matrix = SimulationExecutor(strat[1], nrows, nseats, l_aisle, size_aisle_seats, size_aisle_begin, mu_arrival)
+            zmat = seating_matrix.reshape(-1)
+            for key in zmat[0]['timespent']:
+                key_list = [p['timespent'][key] for p in zmat]
+                time_measures[strat[0]][strat[1]][key].extend(key_list)
+        finish = time.time() - start
+        print(f" Running {nsims} simulations of boarding strategy {strat[1]} was completed in {finish} seconds.")
+        
+    return time_measures
 
 
 ###############################################################################
 ### Magic numbers
 
-# Boarding strategy
-# Available boarding strategies are: "backtofront", "outsidein", "rotatingzone", "optimal", "pracoptimal", "revpyramid".
-strategy = "rotatingzone"
+# Number of simulations per boarding strategy
+nsims = 100
+
+# All analyzed boarding strategies
+strategies = ["backtofront", "outsidein", "rotatingzone", "optimal", "pracoptimal", "revpyramid"]
 
 # Plane attributes
 # Number of seat rows on the plane
@@ -632,14 +661,35 @@ mu_arrival = 2
 ### Simulation      (initialization is done in the SimulationExecutor function)
 
 # Run the simulation!
-import time
+time_measures = Simulation_analysis(strategies, nrows, nseats, l_aisle, size_aisle_seats, size_aisle_begin, mu_arrival)
 
-start = time.time()
 
-SimulationExecutor(strategy, nrows, nseats, l_aisle, size_aisle_seats, size_aisle_begin, mu_arrival)
-finish = time.time() - start
 
-print(f"Simulation of boarding strategy {strategy} completed in {finish} seconds.")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            
+             
+
+
+
+
+
+
+
 
 
 
