@@ -614,10 +614,10 @@ def Simulation_analysis(strategies, nrows, nseats, l_aisle, size_aisle_seats, si
     # Setting up output structure
     # Running simulation once for setting up the output structure.
     seating_matrix = SimulationExecutor(strategies[0], nrows, nseats, l_aisle, size_aisle_seats, size_aisle_begin, mu_arrival)
-    zmat = seating_matrix.reshape(-1)
+    passenger_list = seating_matrix.reshape(-1)
     time_measures = []
     for strat in enumerate(strategies):
-        time_measures.append({strat[1] : {key : [] for key in zmat[0]['timespent']}})
+        time_measures.append({strat[1] : {key : [] for key in passenger_list[0]['timespent']}})
         time_measures[strat[0]][strat[1]]['Total_boarding_time'] = [] 
         time_measures[strat[0]][strat[1]]['time_entrance'] = [] 
         
@@ -625,11 +625,11 @@ def Simulation_analysis(strategies, nrows, nseats, l_aisle, size_aisle_seats, si
         start = time.time()
         for i in range(nsims):
             seating_matrix = SimulationExecutor(strat[1], nrows, nseats, l_aisle, size_aisle_seats, size_aisle_begin, mu_arrival)
-            zmat = seating_matrix.reshape(-1)
-            for key in zmat[0]['timespent']:
-                key_list = [p['timespent'][key] for p in zmat]
+            passenger_list = seating_matrix.reshape(-1)
+            for key in passenger_list[0]['timespent']:
+                key_list = [p['timespent'][key] for p in passenger_list]
                 time_measures[strat[0]][strat[1]][key].extend(key_list)
-            time_measures[strat[0]][strat[1]]['Total_boarding_time'].append(max(zmat, key = lambda x: x['timespent']['time_seated'])['timespent']['time_seated'])
+            time_measures[strat[0]][strat[1]]['Total_boarding_time'].append(max(passenger_list, key = lambda x: x['timespent']['time_seated'])['timespent']['time_seated'])
         finish = time.time() - start
         print(f" Running {nsims} simulations of boarding strategy {strat[1]} was completed in {finish} seconds.")
         
