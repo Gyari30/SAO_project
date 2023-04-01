@@ -603,7 +603,7 @@ def SimulationExecutor(strategy, nrows, nseats, l_aisle, size_aisle_seats, size_
 ### Magic numbers
 
 # Boarding strategy
-# Available boarding strategies are: "backtofront", "outsidein", "rotatingzone", "optimal", "pracoptimal", "revpyramid".
+# Available boarding strategies are: "backtofront", "outsidein", "rotatingzone", "optimal", "pracoptimal", "revpyramid", "random".
 strategy = "backtofront"
 
 # Plane attributes
