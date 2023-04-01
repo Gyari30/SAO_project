@@ -364,6 +364,17 @@ def BoardingStrat(type):
 
 
 
+def Queue_former(strategy):
+    arrival_queue = BoardingStrat(strategy)
+    passengers = []
+    ID = 0
+    for i in enumerate(arrival_queue):
+        ID += 1
+        passengers.append(PassengerGenerator(ID, i[1][0], i[1][1]))
+    return passengers
+
+
+
 def SeatingManager(arriving_passenger, seating_matrix, current_time):
     seat = arriving_passenger["seat"]
     row = arriving_passenger["row"]
@@ -438,9 +449,7 @@ def SeatingManager(arriving_passenger, seating_matrix, current_time):
     # Return the seating matrix, the time it takes for the aisle to clear.
     res_seating = [seating_matrix, aisle_occupancy_time]
     return res_seating
-    
-    
-# !!!!!!!!!!!!!!!!!!!!!!!!!!! FROM HERE THE CODE DEVIATES FROM DAVID'S LATEST PUBLISH ON 30/03   !!!!!!!!!!!!!!!!!!!!!!!!!!! 
+
     
     
 def PassengerGenerator(ID, row, seat):
@@ -476,17 +485,9 @@ def PassengerGenerator(ID, row, seat):
     }
     return dict_res
 
-def Queue_former(strategy):
-    arrival_queue = BoardingStrat(strategy)
-    passengers = []
-    ID = 0
-    for i in enumerate(arrival_queue):
-        ID += 1
-        passengers.append(PassengerGenerator(ID, i[1][0], i[1][1]))
-    return passengers
 
 
-    
+
 def New_arrival(passengers, aisle, current_time, events):
     # If the first position in the aisle is vacant, give that position to the first passenger 
     # in the passengers that had not yet been assigned a spot in the aisle.
@@ -502,8 +503,11 @@ def New_arrival(passengers, aisle, current_time, events):
                 pass_event = Passenger_event(passengers[i]['ID'], passengers[i]['walkspeed']['aisle_begin'])
                 events.append(pass_event)
 
+
+
 def Passenger_event(ID, timer):
     return{'ID': ID, 'timer' : timer,}
+
 
 
 def BoardingSimulator9000(current_time, passengers, aisle, events, seating_matrix, mu_arrival):
@@ -583,6 +587,7 @@ def BoardingSimulator9000(current_time, passengers, aisle, events, seating_matri
                     events[action_index]['timer'] = res_seating[1]
                     
 
+
 def SimulationExecutor(strategy, nrows, nseats, l_aisle, size_aisle_seats, size_aisle_begin, mu_arrival):
     # Initialization
     current_time = 0                                # Initializing global time
@@ -604,7 +609,7 @@ def SimulationExecutor(strategy, nrows, nseats, l_aisle, size_aisle_seats, size_
 
 # Boarding strategy
 # Available boarding strategies are: "backtofront", "outsidein", "rotatingzone", "optimal", "pracoptimal", "revpyramid".
-strategy = "backtofront"
+strategy = "rotatingzone"
 
 # Plane attributes
 # Number of seat rows on the plane
@@ -627,8 +632,14 @@ mu_arrival = 2
 ### Simulation      (initialization is done in the SimulationExecutor function)
 
 # Run the simulation!
-SimulationExecutor(strategy, nrows, nseats, l_aisle, size_aisle_seats, size_aisle_begin, mu_arrival)
+import time
 
+start = time.time()
+
+SimulationExecutor(strategy, nrows, nseats, l_aisle, size_aisle_seats, size_aisle_begin, mu_arrival)
+finish = time.time() - start
+
+print(f"Simulation of boarding strategy {strategy} completed in {finish} seconds.")
 
 
 
