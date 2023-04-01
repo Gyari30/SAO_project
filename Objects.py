@@ -634,11 +634,17 @@ def Simulation_analysis(strategies, nrows, nseats, l_aisle, size_aisle_seats, si
 ###############################################################################
 ### Magic numbers
 
+<<<<<<< HEAD
 # Number of simulations per boarding strategy
 nsims = 100
 
 # All analyzed boarding strategies
 strategies = ["backtofront", "outsidein", "rotatingzone", "optimal", "pracoptimal", "revpyramid"]
+=======
+# Boarding strategy
+# Available boarding strategies are: "backtofront", "outsidein", "rotatingzone", "optimal", "pracoptimal", "revpyramid", "random".
+strategy = "backtofront"
+>>>>>>> b052a5f5f3680626a3faf03eb20176b866c3312f
 
 # Plane attributes
 # Number of seat rows on the plane
