@@ -573,8 +573,9 @@ def BoardingSimulator9000(current_time, passengers, aisle, events, seating_matri
                     passengers[pass_index]['seated'] = True
 
 def SimulationExecutor(current_time, passengers, aisle, events, seating_matrix):    # Should UPDATE this to include the boarding strategies to form the passengers list.
-    while len(events)>0:     # Once everybody is seated there are no more scheduled events and the simulation is done. 
+    while len(events)<90:     # Once everybody is seated there are no more scheduled events and the simulation is done. 
         BoardingSimulator9000(current_time, passengers, aisle, events, seating_matrix)
+
 
 
 
@@ -623,8 +624,7 @@ current_time = 0
 # Initializing the event list. At first the only active event is that of the next arrival.
 # As passengers enter the plane, they too get their separate event.
 events = [{'ID': 'Arrival', 'timer' : random.expovariate(1/mu_arrival)}]
-len(events)
-del events[0]
+
 # Initializing seating matrix
 seating_matrix = np.full((nrows,nseats), {})
 
