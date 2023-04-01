@@ -364,7 +364,7 @@ def BoardingStrat(type):
 
 
 
-def SeatingManager(arriving_passenger, seating_matrix):
+def SeatingManager(arriving_passenger, seating_matrix, current_time):
     seat = arriving_passenger["seat"]
     row = arriving_passenger["row"]
     luggage_time = arriving_passenger["timespent"]["luggage_stash"]
@@ -427,14 +427,19 @@ def SeatingManager(arriving_passenger, seating_matrix):
                 window_seating = random.uniform(4, 7)  # window seating time
                 arriving_passenger["timespent"]["seating_time"] += window_seating
                 seating_time = window_seating
-    # Sum up the boarding times
-    passenger_totaltime = arriving_passenger["timespent"]["seating_time"] + arriving_passenger["timespent"]["luggage_stash"] + arriving_passenger["timespent"]["entrance"] + arriving_passenger["timespent"]["walking"] + arriving_passenger["timespent"]["waiting"]
-    arriving_passenger["pass_end_relative"] += passenger_totaltime
-    arriving_passenger["board_time_cum"] = passenger_totaltime
-    # Seat the arriving into seating matrix
+                
+    # Defining time measures
+    
+    passenger_total_seating_time = arriving_passenger["timespent"]["seating_time"] + arriving_passenger["timespent"]["luggage_stash"]
+    arriving_passenger["time_seated"] = current_time + passenger_total_seating_time
+    arriving_passenger["board_time_cum"] = arriving_passenger["time_seated"] - arriving_passenger["time_entrance"]
+    
+    # Seat the arriving passenger in the seating matrix
     seating_matrix[row - 1][seat - 1] = arriving_passenger
-    # Return the calculated total aisle time
-    return luggage_time+seating_time
+    
+    # Return the seating matrix and the total time spent sitting and stowing luggage (which is the time it takes before the spot on the aisle is cleared).
+    res_seating = [seating_matrix, passenger_total_seating_time]
+    return res_seating
     
     
 # !!!!!!!!!!!!!!!!!!!!!!!!!!! FROM HERE THE CODE DEVIATES FROM DAVID'S LATEST PUBLISH ON 30/03   !!!!!!!!!!!!!!!!!!!!!!!!!!! 
@@ -442,7 +447,6 @@ def SeatingManager(arriving_passenger, seating_matrix):
     
 def PassengerGenerator(ID, row, seat):
     # Simulated parameters
-    enter_time = random.uniform(1, 5)  # time spent by lining up and entering the airplane
     has_luggage = rnd.choice((1, 0), p=[0.8, 0.2])  # logical if person has a luggage (1-yes, 0-no)
     if has_luggage==1:
         luggage_stash = random.uniform(6, 30)  # seconds spent with luggage stash
@@ -465,7 +469,6 @@ def PassengerGenerator(ID, row, seat):
         "seated": False,
         "ID": ID,
         "timespent": {
-            "entrance": enter_time,
             "walking": walking_time,
             "waiting": 0,
             "luggage_stash": luggage_stash,
@@ -485,7 +488,7 @@ def New_arrival(passengers, aisle, current_time):
         if passengers[i]['aisle_pos']==None:
             while aisle[0] == 0:
                 passengers[i]['aisle_pos'] = 0
-                passengers[i]['Time_entrance'] = current_time
+                passengers[i]['time_entrance'] = current_time
                 aisle[0] = 1
                 # Make a new entry for the passenger in the event list
                 pass_event = Passenger_event(passengers[i]['ID'], passengers[i]['walkspeed']['aisle_begin'])
@@ -495,7 +498,7 @@ def Passenger_event(ID, timer):
     return{'ID': ID, 'timer' : timer,}
 
 
-def BoardingSimulator9000(current_time, passengers, aisle, events):
+def BoardingSimulator9000(current_time, passengers, aisle, events, seating_matrix):
     
     # Step 1: Identify the next event 
     min_timer = min(events, key = lambda x: x['timer'])['timer']    # Find the time to the next event
@@ -552,7 +555,7 @@ def BoardingSimulator9000(current_time, passengers, aisle, events):
                 passengers[pass_index]['aisle_pos'] = aisle_position + 1
                 
                 # If he has not arrived at his row number yet, we simply schedule his next movement.
-                if not passengers[pass_index]['aisle_pos'] == passengers[pass_index]['row'] + l_aisle - nrows:
+                if not passengers[pass_index]['aisle_pos'] == passengers[pass_index]['row'] + l_aisle - nrows - 1:
                     # Again accounting for different tile sizes. Some duplicate code cannot be avoided here.
                     if aisle_position < l_aisle - nrows:    
                         events[action_index]['timer'] = passengers[pass_index]['walkspeed']['aisle_begin']
@@ -564,14 +567,19 @@ def BoardingSimulator9000(current_time, passengers, aisle, events):
                     # !!!!!!!!!!!!!!!!!!!       READ LINE BELOW     !!!!!!!!!!!!!!!!!!!
                     # The SeatingManager function needs to be updated such that it returns the time it takes for the passenger to get seated.
                     # This means that the SeatingManager also needs to incorporate luggage delay.
-                    # events[action_index]['timer'] = SeatingManager(passengers[pass_index], seating_matrix)
-                    passengers[pass_index]['seated'] == True
+                    res_seating = SeatingManager(passengers[pass_index], seating_matrix, current_time)
+                    seating_matrix = res_seating[0]
+                    events[action_index]['timer'] = res_seating[1]
+                    passengers[pass_index]['seated'] = True
 
-def SimulationExecutor(current_time, passengers, aisle, events):    # Should UPDATE this to include the boarding strategies to form the passengers list.
+def SimulationExecutor(current_time, passengers, aisle, events, seating_matrix):    # Should UPDATE this to include the boarding strategies to form the passengers list.
     while len(events)>0:     # Once everybody is seated there are no more scheduled events and the simulation is done. 
-        BoardingSimulator9000(current_time, passengers, aisle, events)
+        BoardingSimulator9000(current_time, passengers, aisle, events, seating_matrix)
 
-# Magic numbers
+
+
+###############################################################################
+### Magic numbers
 
 # Number of seat rows on the plane
 nrows = 30
@@ -587,10 +595,8 @@ size_aisle_begin = 0.4572
 # Mean arrival delay (in seconds)
 mu_arrival = 2
 
-
-
-
-# Initialization
+###############################################################################
+### Initialization
 
 # Initializing passengers       (should make a function out of this)
 # Big change: save the passengers as a separate list that is created a priori. 
@@ -602,9 +608,6 @@ for i in range(nrows):
         ID+=1
         passengers.append(PassengerGenerator(ID, i+1, q+1))
         
-
-passengers[0]
-
 
 # Initializing the aisle
 # The aisle is a binary vector, where '1' designates occupancy and '0' vacancy.
@@ -620,15 +623,33 @@ current_time = 0
 # Initializing the event list. At first the only active event is that of the next arrival.
 # As passengers enter the plane, they too get their separate event.
 events = [{'ID': 'Arrival', 'timer' : random.expovariate(1/mu_arrival)}]
+len(events)
+del events[0]
+# Initializing seating matrix
+seating_matrix = np.full((nrows,nseats), {})
 
 
 
 
 
-
+###############################################################################
+### Simulation
 
 # Run the simulation!
-# SimulationExecutor(current_time, passengers, aisle, events)
+
+BoardingSimulator9000(current_time, passengers, aisle, events, seating_matrix)
+aisle
+passengers[0]['aisle_pos']
+events
+
+SimulationExecutor(current_time, passengers, aisle, events, seating_matrix)
+
+
+seating_matrix
+
+
+
+
 
 
 
