@@ -441,7 +441,7 @@ def SeatingManager(arriving_passenger, seating_matrix, current_time):
                 
     # Setting time measures.
     aisle_occupancy_time = arriving_passenger["timespent"]["luggage_stash"] + seating_time
-    arriving_passenger["timespent"]["time_seated"] = current_time + arriving_passenger["timespent"]["luggage_stash"] + arriving_passenger["timespent"]["seating_time"]
+    arriving_passenger["timespent"]["time_seated"] = current_time[0] + arriving_passenger["timespent"]["luggage_stash"] + arriving_passenger["timespent"]["seating_time"]
     arriving_passenger["timespent"]["board_time_cum"] = arriving_passenger["timespent"]["time_seated"] - arriving_passenger["timespent"]["time_entrance"]
     
     # Seat the arriving passenger in the seating matrix
@@ -495,7 +495,7 @@ def New_arrival(passengers, aisle, current_time, events):
         if passengers[i]['aisle_pos']==None:
             while aisle[0] == 0:
                 passengers[i]['aisle_pos'] = 0
-                passengers[i]['timespent']['time_entrance'] = current_time
+                passengers[i]['timespent']['time_entrance'] = current_time[0]
                 aisle[0] = 1
                 # Make a new entry for the passenger in the event list
                 pass_event = Passenger_event(passengers[i]['ID'], passengers[i]['walkspeed']['aisle_begin'])
@@ -507,24 +507,23 @@ def Passenger_event(ID, timer):
     return{'ID': ID, 'timer' : timer,}
 
 
-
 def BoardingSimulator9000(current_time, passengers, aisle, events, seating_matrix, mu_arrival):
-    
     # Step 1: Identify the next event 
     min_timer = min(events, key = lambda x: x['timer'])['timer']    # Find the time to the next event
     # Retrieve the event list index of the next event (by matching the smallest timer)
     action_index = next((index for (index, e) in enumerate(events) if e["timer"] == min_timer), None) 
     
-    current_time += min_timer # Update current time
+    current_time[0] += min_timer # Update current time
     for i in range(len(events)):          
-        events[i]['timer'] -= min_timer     # Update the other event timers.
+        events[i]['timer'] -= min_timer     # Update the event timers.
         
     # Step 2: Execute the next event 
     # First we define what happens if the event is a new arrival
     if events[action_index]['ID'] == 'Arrival':
         # In case the first spot on the aisle is occupied, the arrival is delayed.
         if bool(aisle[0]):
-            events[action_index]['timer'] = 1   # Setting the delay arbitrarily to 1 second, NEED TO DISCUSS AND UPDATE.
+            events[action_index]['timer'] = 1   # Setting the delay arbitrarily to 1 second, NEED TO DISCUSS AND UPDATE. 
+            # Note that we are only counting waiting time on the plane. Waiting time in the tube is 
         else:
             events[action_index]['timer'] = random.expovariate(1/mu_arrival) # Otherwise draw from an exp. distribution with mean 2 ALSO NEED TO DISCUSS.
             New_arrival(passengers, aisle, current_time, events)    # And let the new passenger arrive.
@@ -541,6 +540,8 @@ def BoardingSimulator9000(current_time, passengers, aisle, events, seating_matri
         # First we check if the passenger has already been seated. If so, we remove the passenger's actions from the event list.
         if passengers[pass_index]['seated'] == True:
             del events[action_index]
+            # Uncomment line below for continuously keeping track of the simulation.
+            # print(f" Passenger {passengers[pass_index]['ID']} is seated at time {current_time[0]}.")
             # And his space on the aisle is cleared.
             aisle[aisle_position] = 0
         
@@ -585,9 +586,11 @@ def BoardingSimulator9000(current_time, passengers, aisle, events, seating_matri
                     
 
 
+
+
 def SimulationExecutor(strategy, nrows, nseats, l_aisle, size_aisle_seats, size_aisle_begin, mu_arrival):
     # Initialization
-    current_time = 0                                # Initializing global time
+    current_time = [0]                                # Initializing global time. For some reason this cannot simply be an integer, otherwise it does not update (took me forever to find this).
     aisle = np.zeros(l_aisle)                       # The aisle is a binary vector, where '1' designates occupancy and '0' vacancy.
     seating_matrix = np.full((nrows,nseats), {})    # Initializing seating matrix
     passengers = Queue_former(strategy)             # Initializing the passengers according to the boarding strategy.
@@ -613,11 +616,12 @@ def Simulation_analysis(strategies, nrows, nseats, l_aisle, size_aisle_seats, si
     seating_matrix = SimulationExecutor(strategies[0], nrows, nseats, l_aisle, size_aisle_seats, size_aisle_begin, mu_arrival)
     zmat = seating_matrix.reshape(-1)
     time_measures = []
-    for strategy in strategies:
-        time_measures.append({strategy : {key : [] for key in zmat[0]['timespent']}})
-    
-    # Saving output to output structure.
     for strat in enumerate(strategies):
+        time_measures.append({strat[1] : {key : [] for key in zmat[0]['timespent']}})
+        time_measures[strat[0]][strat[1]]['Total_boarding_time'] = [] 
+        time_measures[strat[0]][strat[1]]['time_entrance'] = [] 
+        
+        # Saving output to output structure.
         start = time.time()
         for i in range(nsims):
             seating_matrix = SimulationExecutor(strat[1], nrows, nseats, l_aisle, size_aisle_seats, size_aisle_begin, mu_arrival)
@@ -625,6 +629,7 @@ def Simulation_analysis(strategies, nrows, nseats, l_aisle, size_aisle_seats, si
             for key in zmat[0]['timespent']:
                 key_list = [p['timespent'][key] for p in zmat]
                 time_measures[strat[0]][strat[1]][key].extend(key_list)
+            time_measures[strat[0]][strat[1]]['Total_boarding_time'].append(max(zmat, key = lambda x: x['timespent']['time_seated'])['timespent']['time_seated'])
         finish = time.time() - start
         print(f" Running {nsims} simulations of boarding strategy {strat[1]} was completed in {finish} seconds.")
         
@@ -634,17 +639,13 @@ def Simulation_analysis(strategies, nrows, nseats, l_aisle, size_aisle_seats, si
 ###############################################################################
 ### Magic numbers
 
-<<<<<<< HEAD
+
 # Number of simulations per boarding strategy
 nsims = 100
 
 # All analyzed boarding strategies
-strategies = ["backtofront", "outsidein", "rotatingzone", "optimal", "pracoptimal", "revpyramid"]
-=======
-# Boarding strategy
-# Available boarding strategies are: "backtofront", "outsidein", "rotatingzone", "optimal", "pracoptimal", "revpyramid", "random".
-strategy = "backtofront"
->>>>>>> b052a5f5f3680626a3faf03eb20176b866c3312f
+# strategies = ["backtofront", "outsidein", "rotatingzone", "optimal", "pracoptimal", "revpyramid"]
+strategies = ["rotatingzone"]
 
 # Plane attributes
 # Number of seat rows on the plane
@@ -671,12 +672,10 @@ time_measures = Simulation_analysis(strategies, nrows, nseats, l_aisle, size_ais
 
 
 
+for strat in enumerate(strategies):
+    print(max(time_measures[strat[0]][strat[1]]['Total_boarding_time']))
 
-
-
-
-
-
+###############################################################################
 
 
 
