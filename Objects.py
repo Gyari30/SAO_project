@@ -430,15 +430,15 @@ def SeatingManager(arriving_passenger, seating_matrix, current_time):
                 
     # Defining time measures
     
-    passenger_total_seating_time = arriving_passenger["timespent"]["seating_time"] + arriving_passenger["timespent"]["luggage_stash"]
-    arriving_passenger["time_seated"] = current_time + passenger_total_seating_time
+    aisle_occupancy_time = seating_time + arriving_passenger["timespent"]["luggage_stash"]
+    arriving_passenger["time_seated"] = current_time + arriving_passenger["timespent"]["luggage_stash"] + arriving_passenger["timespent"]["seating_time"]
     arriving_passenger["board_time_cum"] = arriving_passenger["time_seated"] - arriving_passenger["time_entrance"]
     
     # Seat the arriving passenger in the seating matrix
     seating_matrix[row - 1][seat - 1] = arriving_passenger
     
-    # Return the seating matrix and the total time spent sitting and stowing luggage (which is the time it takes before the spot on the aisle is cleared).
-    res_seating = [seating_matrix, passenger_total_seating_time]
+    # Return the seating matrix, the time it takes for the aisle to clear.
+    res_seating = [seating_matrix, aisle_occupancy_time]
     return res_seating
     
     
@@ -567,16 +567,17 @@ def BoardingSimulator9000(current_time, passengers, aisle, events, seating_matri
                 
                 # Now for something very important: if the passenger arrives at the row of his seat he needs to sit!
                 else:
+                    # Next time this passenger's event occurs, the passenger is seated and removed from the event list.
+                    # Here we already mark this passenger as seated. 
+                    passengers[pass_index]['seated'] = True
                     res_seating = SeatingManager(passengers[pass_index], seating_matrix, current_time)
                     seating_matrix = res_seating[0]
                     events[action_index]['timer'] = res_seating[1]
-                    passengers[pass_index]['seated'] = True
+                    
 
 def SimulationExecutor(current_time, passengers, aisle, events, seating_matrix):    # Should UPDATE this to include the boarding strategies to form the passengers list.
     while len(events)>0:     # Once everybody is seated there are no more scheduled events and the simulation is done. 
         BoardingSimulator9000(current_time, passengers, aisle, events, seating_matrix)
-
-
 
 
 ###############################################################################
@@ -636,22 +637,17 @@ seating_matrix = np.full((nrows,nseats), {})
 ### Simulation
 
 # Run the simulation!
-
-BoardingSimulator9000(current_time, passengers, aisle, events, seating_matrix)
-
-aisle
-passengers[1]
-passengers[0]['aisle_pos']
-
-
-passengers[5]
-seating_matrix[1-1,6-1]
-events
-seating_matrix[1,:]
 SimulationExecutor(current_time, passengers, aisle, events, seating_matrix)
 
 
-seating_matrix
+
+
+
+
+
+
+
+
 
 
 
