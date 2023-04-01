@@ -367,7 +367,6 @@ def BoardingStrat(type):
 def SeatingManager(arriving_passenger, seating_matrix, current_time):
     seat = arriving_passenger["seat"]
     row = arriving_passenger["row"]
-    luggage_time = arriving_passenger["timespent"]["luggage_stash"]
     if seat==3 or seat==4:
         # Arriving has aisle seat
         aisle_seating = random.uniform(2, 5)  # Aisle seating time (aisle can be taken regardless of people already sitting in the row
@@ -428,9 +427,8 @@ def SeatingManager(arriving_passenger, seating_matrix, current_time):
                 arriving_passenger["timespent"]["seating_time"] += window_seating
                 seating_time = window_seating
                 
-    # Defining time measures
-    
-    aisle_occupancy_time = seating_time + arriving_passenger["timespent"]["luggage_stash"]
+    # Setting time measures.
+    aisle_occupancy_time = arriving_passenger["timespent"]["luggage_stash"] + seating_time
     arriving_passenger["time_seated"] = current_time + arriving_passenger["timespent"]["luggage_stash"] + arriving_passenger["timespent"]["seating_time"]
     arriving_passenger["board_time_cum"] = arriving_passenger["time_seated"] - arriving_passenger["time_entrance"]
     
@@ -478,8 +476,18 @@ def PassengerGenerator(ID, row, seat):
     }
     return dict_res
 
+def Queue_former(strategy):
+    arrival_queue = BoardingStrat(strategy)
+    passengers = []
+    ID = 0
+    for i in enumerate(arrival_queue):
+        ID += 1
+        passengers.append(PassengerGenerator(ID, i[1][0], i[1][1]))
+    return passengers
 
-def New_arrival(passengers, aisle, current_time):
+
+    
+def New_arrival(passengers, aisle, current_time, events):
     # If the first position in the aisle is vacant, give that position to the first passenger 
     # in the passengers that had not yet been assigned a spot in the aisle.
     if bool(aisle[0]):
@@ -498,7 +506,7 @@ def Passenger_event(ID, timer):
     return{'ID': ID, 'timer' : timer,}
 
 
-def BoardingSimulator9000(current_time, passengers, aisle, events, seating_matrix):
+def BoardingSimulator9000(current_time, passengers, aisle, events, seating_matrix, mu_arrival):
     
     # Step 1: Identify the next event 
     min_timer = min(events, key = lambda x: x['timer'])['timer']    # Find the time to the next event
@@ -517,7 +525,7 @@ def BoardingSimulator9000(current_time, passengers, aisle, events, seating_matri
             events[action_index]['timer'] = 1   # Setting the delay arbitrarily to 1 second, NEED TO DISCUSS AND UPDATE.
         else:
             events[action_index]['timer'] = random.expovariate(1/mu_arrival) # Otherwise draw from an exp. distribution with mean 2 ALSO NEED TO DISCUSS.
-            New_arrival(passengers, aisle, current_time)    # And let the new passenger arrive.
+            New_arrival(passengers, aisle, current_time, events)    # And let the new passenger arrive.
         # If all passengers are in the plane, remove the arrival event from the event list.        
         if all(p['aisle_pos'] is not None for p in passengers):
             del events[action_index]
@@ -575,14 +583,30 @@ def BoardingSimulator9000(current_time, passengers, aisle, events, seating_matri
                     events[action_index]['timer'] = res_seating[1]
                     
 
-def SimulationExecutor(current_time, passengers, aisle, events, seating_matrix):    # Should UPDATE this to include the boarding strategies to form the passengers list.
-    while len(events)>0:     # Once everybody is seated there are no more scheduled events and the simulation is done. 
-        BoardingSimulator9000(current_time, passengers, aisle, events, seating_matrix)
+def SimulationExecutor(strategy, nrows, nseats, l_aisle, size_aisle_seats, size_aisle_begin, mu_arrival):
+    # Initialization
+    current_time = 0                                # Initializing global time
+    aisle = np.zeros(l_aisle)                       # The aisle is a binary vector, where '1' designates occupancy and '0' vacancy.
+    seating_matrix = np.full((nrows,nseats), {})    # Initializing seating matrix
+    passengers = Queue_former(strategy)             # Initializing the passengers according to the boarding strategy.
+    events = [{'ID': 'Arrival', 'timer' : random.expovariate(1/mu_arrival)}]    # Initializing the event list. 
+    # At first the only active event is that of the next arrival.
+    # As passengers enter the plane, their next action gets its separate event.
+    
+    # Execution
+    while len(events)>0:                            # Once everybody is seated there are no more scheduled events and the simulation is done. 
+        BoardingSimulator9000(current_time, passengers, aisle, events, seating_matrix, mu_arrival)
+
 
 
 ###############################################################################
 ### Magic numbers
 
+# Boarding strategy
+# Available boarding strategies are: "backtofront", "outsidein", "rotatingzone", "optimal", "pracoptimal", "revpyramid".
+strategy = "backtofront"
+
+# Plane attributes
 # Number of seat rows on the plane
 nrows = 30
 # Seats per row
@@ -597,53 +621,13 @@ size_aisle_begin = 0.4572
 # Mean arrival delay (in seconds)
 mu_arrival = 2
 
-###############################################################################
-### Initialization
-
-# Initializing passengers       (should make a function out of this)
-# Big change: save the passengers as a separate list that is created a priori. 
-# This process defines the boarding strategies, here a super stupid one is taken for coding simplicity.
-passengers = []
-ID=0
-for i in range(nrows):
-    for q in range(nseats):
-        ID+=1
-        passengers.append(PassengerGenerator(ID, i+1, q+1))
-        
-
-# Initializing the aisle
-# The aisle is a binary vector, where '1' designates occupancy and '0' vacancy.
-aisle = np.zeros(l_aisle)
-
-
-
-# Initializing global time
-current_time = 0
-
-
-
-# Initializing the event list. At first the only active event is that of the next arrival.
-# As passengers enter the plane, they too get their separate event.
-events = [{'ID': 'Arrival', 'timer' : random.expovariate(1/mu_arrival)}]
-
-# Initializing seating matrix
-seating_matrix = np.full((nrows,nseats), {})
-
-
-
 
 
 ###############################################################################
-### Simulation
+### Simulation      (initialization is done in the SimulationExecutor function)
 
 # Run the simulation!
-SimulationExecutor(current_time, passengers, aisle, events, seating_matrix)
-
-
-
-
-
-
+SimulationExecutor(strategy, nrows, nseats, l_aisle, size_aisle_seats, size_aisle_begin, mu_arrival)
 
 
 
