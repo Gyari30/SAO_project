@@ -474,6 +474,7 @@ def WalkingImplement(aisle, ind_from, ind_to):
 
 def AisleManager(type):
     # Initialization
+<<<<<<< Updated upstream
     aisle = np.full((34, 1), {})
     arrival_queue = BoardingStrat(type)
     TIME = 0
@@ -484,6 +485,121 @@ def AisleManager(type):
     arrival_queue.pop(0)
 
     return None
+=======
+    current_time = [0]                                # Initializing global time. For some reason this cannot simply be an integer, otherwise it does not update (took me forever to find this).
+    aisle = np.zeros(l_aisle)                       # The aisle is a binary vector, where '1' designates occupancy and '0' vacancy.
+    seating_matrix = np.full((nrows,nseats), {})    # Initializing seating matrix
+    passengers = Queue_former(strategy)             # Initializing the passengers according to the boarding strategy.
+    events = [{'ID': 'Arrival', 'timer' : random.expovariate(1/mu_arrival)}]    # Initializing the event list. 
+    # At first the only active event is that of the next arrival.
+    # As passengers enter the plane, their next action gets its separate event.
+    
+    # Execution
+    while len(events)>0:                            # Once everybody is seated there are no more scheduled events and the simulation is done. 
+        BoardingSimulator9000(current_time, passengers, aisle, events, seating_matrix, mu_arrival)
+    
+    return seating_matrix
+        
+
+
+def Simulation_analysis(strategies, nrows, nseats, l_aisle, size_aisle_seats, size_aisle_begin, mu_arrival):
+    
+    # For each strategy and for each time measure I want a list that states the measured times for all passengers if all iterations. 
+    # So for 100 iterations each list should contain 180*100 = 18000 observations.
+    
+    # Setting up output structure
+    # Running simulation once for setting up the output structure.
+    seating_matrix = SimulationExecutor(strategies[0], nrows, nseats, l_aisle, size_aisle_seats, size_aisle_begin, mu_arrival)
+    passenger_list = seating_matrix.reshape(-1)
+    time_measures = []
+    for strat in enumerate(strategies):
+        time_measures.append({strat[1] : {key : [] for key in passenger_list[0]['timespent']}})
+        time_measures[strat[0]][strat[1]]['Total_boarding_time'] = [] 
+        time_measures[strat[0]][strat[1]]['time_entrance'] = [] 
+
+        # Saving output to output structure.
+        start = time.time()
+        for i in range(nsims):
+            seating_matrix = SimulationExecutor(strat[1], nrows, nseats, l_aisle, size_aisle_seats, size_aisle_begin, mu_arrival)
+            passenger_list = seating_matrix.reshape(-1)
+            for key in passenger_list[0]['timespent']:
+                key_list = [p['timespent'][key] for p in passenger_list]
+                time_measures[strat[0]][strat[1]][key].extend(key_list)
+                key_mean = mean(key_list)
+                key_cvar95 = np.percentile(key_list, 95)
+                # The two lines below don't work yet
+                print(time_measures[strat[0]][strat[1]])
+                #time_measures[strat[0]][strat[1]][key] = {"mean": key_mean}
+                #time_measures[strat[0]][strat[1]]{key: {'mean': key_mean}} # !!!!!!!!
+                #time_measures[strat[0]][strat[1]][key]['95percentile'] = key_cvar95  # !!!!!
+            time_measures[strat[0]][strat[1]]['Total_boarding_time'].append(max(passenger_list, key = lambda x: x['timespent']['time_seated'])['timespent']['time_seated'])
+            
+        finish = time.time() - start
+        print(f" Running {nsims} simulations of boarding strategy {strat[1]} was completed in {finish} seconds.")
+        
+    return time_measures
+
+
+    
+    
+
+###############################################################################
+### Magic numbers
+
+
+# Number of simulations per boarding strategy
+nsims = 100
+
+# All analyzed boarding strategies
+strategies = ["backtofront", "outsidein", "rotatingzone", "optimal", "pracoptimal", "revpyramid", "random"]
+
+# Plane attributes
+# Number of seat rows on the plane
+nrows = 30
+# Seats per row
+nseats = 6
+# Total length of the aisle
+l_aisle = 35
+
+# The space occupied on the aisle is larger next to the seats than on the first part.
+size_aisle_seats = 0.7112
+size_aisle_begin = 0.4572
+
+# Mean arrival delay (in seconds)
+mu_arrival = 2
+
+
+
+###############################################################################
+### Simulation      (initialization is done in the SimulationExecutor function)
+
+# Run the simulation!
+time_measures = Simulation_analysis(strategies, nrows, nseats, l_aisle, size_aisle_seats, size_aisle_begin, mu_arrival)
+
+
+
+for strat in enumerate(strategies):
+    print(time_measures[strat[0]][strat[1]]['Total_boarding_time'])
+
+###############################################################################
+
+
+
+
+
+
+
+
+
+
+            
+             
+
+
+
+
+
+>>>>>>> Stashed changes
 
 
 AisleManager("random")
