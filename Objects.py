@@ -616,24 +616,30 @@ def Simulation_analysis(strategies, nrows, nseats, l_aisle, size_aisle_seats, si
     passenger_list = seating_matrix.reshape(-1)
     time_measures = []
     for strat in enumerate(strategies):
-        time_measures.append({strat[1] : {key : [] for key in passenger_list[0]['timespent']}})
-        time_measures[strat[0]][strat[1]]['Total_boarding_time'] = [] 
-        time_measures[strat[0]][strat[1]]['time_entrance'] = [] 
-        
+        keys = [key for key in passenger_list[0]['timespent']]
+        stats = ['95thpercentile', 'mean']
+        keys0 = stats + ['Total_boarding_time']
+        keys.extend(keys0)
+        time_measures.append({strat[1] : {key : [] for key in keys}})
+        for stat in stats:
+                time_measures[strat[0]][strat[1]][stat] = {key: [] for key in keys if key not in keys0}
+    
         
         # Saving output to output structure.
         start = time.time()
         for i in range(nsims):
             seating_matrix = SimulationExecutor(strat[1], nrows, nseats, l_aisle, size_aisle_seats, size_aisle_begin, mu_arrival)
             passenger_list = seating_matrix.reshape(-1)
-            for key in passenger_list[0]['timespent']:
-                key_list = [p['timespent'][key] for p in passenger_list]
-                time_measures[strat[0]][strat[1]][key].extend(key_list)
-                key_mean = mean(key_list)
-                key_cvar95 = np.percentile(key_list, 95)
-                # The two lines below don't work yet 
-                time_measures[strat[0]][strat[1]]{key : {'mean' : key_mean}} # !!!!!!!!
-                time_measures[strat[0]][strat[1]][key]['95percentile'] = key_cvar95 # !!!!!
+            for key in keys:
+                if key not in keys0:
+                    key_list = [p['timespent'][key] for p in passenger_list]
+                    time_measures[strat[0]][strat[1]][key].extend(key_list)
+                    
+                    key_mean = mean(key_list)
+                    key_95percentile = np.percentile(key_list, 95)
+                    
+                    time_measures[strat[0]][strat[1]]['mean'][key].extend([key_mean]) 
+                    time_measures[strat[0]][strat[1]]['95thpercentile'][key].extend([key_95percentile]) 
             time_measures[strat[0]][strat[1]]['Total_boarding_time'].append(max(passenger_list, key = lambda x: x['timespent']['time_seated'])['timespent']['time_seated'])
             
         finish = time.time() - start
@@ -642,8 +648,10 @@ def Simulation_analysis(strategies, nrows, nseats, l_aisle, size_aisle_seats, si
     return time_measures
 
 
-    
-    
+
+
+
+
 
 ###############################################################################
 ### Magic numbers
@@ -681,8 +689,8 @@ time_measures = Simulation_analysis(strategies, nrows, nseats, l_aisle, size_ais
 
 
 
-for strat in enumerate(strategies):
-    print(time_measures[strat[0]][strat[1]]['Total_boarding_time'])
+# for strat in enumerate(strategies):
+#     print(time_measures[strat[0]][strat[1]]['Total_boarding_time'])
 
 ###############################################################################
 
