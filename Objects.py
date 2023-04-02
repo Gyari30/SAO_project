@@ -649,14 +649,11 @@ def Simulation_analysis(strategies, nrows, nseats, l_aisle, size_aisle_seats, si
 
 
 
-
-
-
-
 ###############################################################################
 ### Magic numbers
 
-
+# Set randomization seed
+random.seed(987654321)
 # Number of simulations per boarding strategy
 nsims = 100
 
