@@ -2,6 +2,7 @@ import numpy as np
 import numpy.random as rnd
 import random
 import time
+from statistics import mean
 
 
 def BoardingStrat(type):
@@ -488,7 +489,6 @@ def PassengerGenerator(ID, row, seat):
 
 
 
-
 def New_arrival(passengers, aisle, current_time, events):
     # We find the first passenger on the passengers list that has not yet been assigned a spot in the aisle.
     for i in range(len(passengers)):
@@ -505,6 +505,7 @@ def New_arrival(passengers, aisle, current_time, events):
 
 def Passenger_event(ID, timer):
     return{'ID': ID, 'timer' : timer,}
+
 
 
 def BoardingSimulator9000(current_time, passengers, aisle, events, seating_matrix, mu_arrival):
@@ -586,8 +587,6 @@ def BoardingSimulator9000(current_time, passengers, aisle, events, seating_matri
                     
 
 
-
-
 def SimulationExecutor(strategy, nrows, nseats, l_aisle, size_aisle_seats, size_aisle_begin, mu_arrival):
     # Initialization
     current_time = [0]                                # Initializing global time. For some reason this cannot simply be an integer, otherwise it does not update (took me forever to find this).
@@ -621,6 +620,7 @@ def Simulation_analysis(strategies, nrows, nseats, l_aisle, size_aisle_seats, si
         time_measures[strat[0]][strat[1]]['Total_boarding_time'] = [] 
         time_measures[strat[0]][strat[1]]['time_entrance'] = [] 
         
+        
         # Saving output to output structure.
         start = time.time()
         for i in range(nsims):
@@ -629,12 +629,40 @@ def Simulation_analysis(strategies, nrows, nseats, l_aisle, size_aisle_seats, si
             for key in passenger_list[0]['timespent']:
                 key_list = [p['timespent'][key] for p in passenger_list]
                 time_measures[strat[0]][strat[1]][key].extend(key_list)
+                key_mean = mean(key_list)
+                key_cvar95 = np.percentile(key_list, 95)
+                # The two lines below don't work yet 
+                time_measures[strat[0]][strat[1]]{key : {'mean' : key_mean}} # !!!!!!!!
+                time_measures[strat[0]][strat[1]][key]['cvar'] = key_cvar95 # !!!!!
             time_measures[strat[0]][strat[1]]['Total_boarding_time'].append(max(passenger_list, key = lambda x: x['timespent']['time_seated'])['timespent']['time_seated'])
+            
         finish = time.time() - start
         print(f" Running {nsims} simulations of boarding strategy {strat[1]} was completed in {finish} seconds.")
         
     return time_measures
 
+
+dict_res = {
+    "row": row,
+    "seat": seat,
+    "has_luggage": has_luggage,
+    "walkspeed": {'aisle_begin' : size_aisle_begin/walkspeed,
+                  'aisle_seats' : size_aisle_seats/walkspeed},
+    "aisle_pos": None,
+    "seated": False,
+    "ID": ID,
+    "timespent": {
+        "board_time_cum": None,
+        "time_entrance": None,
+        "time_seated": None,
+        "walking": walking_time,
+        "waiting": 0,
+        "luggage_stash": luggage_stash,
+        "seating_time": 0,
+        "standup": 0
+    }
+    
+    
 
 ###############################################################################
 ### Magic numbers
@@ -644,8 +672,8 @@ def Simulation_analysis(strategies, nrows, nseats, l_aisle, size_aisle_seats, si
 nsims = 100
 
 # All analyzed boarding strategies
-# strategies = ["backtofront", "outsidein", "rotatingzone", "optimal", "pracoptimal", "revpyramid"]
-strategies = ["rotatingzone"]
+strategies = ["backtofront", "outsidein", "rotatingzone", "optimal", "pracoptimal", "revpyramid"]
+# strategies = ["rotatingzone"]
 
 # Plane attributes
 # Number of seat rows on the plane
@@ -673,7 +701,7 @@ time_measures = Simulation_analysis(strategies, nrows, nseats, l_aisle, size_ais
 
 
 for strat in enumerate(strategies):
-    print(max(time_measures[strat[0]][strat[1]]['Total_boarding_time']))
+    print(time_measures[strat[0]][strat[1]]['Total_boarding_time'])
 
 ###############################################################################
 
