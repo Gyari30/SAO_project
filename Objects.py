@@ -633,7 +633,7 @@ def Simulation_analysis(strategies, nrows, nseats, l_aisle, size_aisle_seats, si
                 key_cvar95 = np.percentile(key_list, 95)
                 # The two lines below don't work yet 
                 time_measures[strat[0]][strat[1]]{key : {'mean' : key_mean}} # !!!!!!!!
-                time_measures[strat[0]][strat[1]][key]['cvar'] = key_cvar95 # !!!!!
+                time_measures[strat[0]][strat[1]][key]['95percentile'] = key_cvar95 # !!!!!
             time_measures[strat[0]][strat[1]]['Total_boarding_time'].append(max(passenger_list, key = lambda x: x['timespent']['time_seated'])['timespent']['time_seated'])
             
         finish = time.time() - start
@@ -642,25 +642,6 @@ def Simulation_analysis(strategies, nrows, nseats, l_aisle, size_aisle_seats, si
     return time_measures
 
 
-dict_res = {
-    "row": row,
-    "seat": seat,
-    "has_luggage": has_luggage,
-    "walkspeed": {'aisle_begin' : size_aisle_begin/walkspeed,
-                  'aisle_seats' : size_aisle_seats/walkspeed},
-    "aisle_pos": None,
-    "seated": False,
-    "ID": ID,
-    "timespent": {
-        "board_time_cum": None,
-        "time_entrance": None,
-        "time_seated": None,
-        "walking": walking_time,
-        "waiting": 0,
-        "luggage_stash": luggage_stash,
-        "seating_time": 0,
-        "standup": 0
-    }
     
     
 
