@@ -4,8 +4,10 @@ import random
 import time
 from statistics import mean
 import csv
+from itertools import zip_longest
 
 random.seed(10)
+rnd.seed(10)
 
 
 def BoardingStrat(type):
@@ -712,4 +714,40 @@ print(mean(time_measures[6]['random']['mean']['board_time_cum'])/60)
 print(mean(time_measures[6]['random']['95thpercentile']['board_time_cum'])/60)
 print(mean(time_measures[6]['random']['Total_boarding_time'])/60)
 
+##########################################################################################x
+
+BF_mean = time_measures[0]['backtofront']['mean']['board_time_cum']
+BF_95 = time_measures[0]['backtofront']['95thpercentile']['board_time_cum']
+BF_tot = time_measures[0]['backtofront']['Total_boarding_time']
+
+WMA_mean = time_measures[1]['outsidein']['mean']['board_time_cum']
+WMA_95 = time_measures[1]['outsidein']['95thpercentile']['board_time_cum']
+WMA_tot = time_measures[1]['outsidein']['Total_boarding_time']
+
+RZ_mean = time_measures[2]['rotatingzone']['mean']['board_time_cum']
+RZ_95 = time_measures[2]['rotatingzone']['95thpercentile']['board_time_cum']
+RZ_tot = time_measures[2]['rotatingzone']['Total_boarding_time']
+
+O_mean = time_measures[3]['optimal']['mean']['board_time_cum']
+O_95 = time_measures[3]['optimal']['95thpercentile']['board_time_cum']
+O_tot = time_measures[3]['optimal']['Total_boarding_time']
+
+PO_mean = time_measures[4]['pracoptimal']['mean']['board_time_cum']
+PO_95 = time_measures[4]['pracoptimal']['95thpercentile']['board_time_cum']
+PO_tot = time_measures[4]['pracoptimal']['Total_boarding_time']
+
+RP_mean = time_measures[5]['revpyramid']['mean']['board_time_cum']
+RP_95 = time_measures[5]['revpyramid']['95thpercentile']['board_time_cum']
+RP_tot = time_measures[5]['revpyramid']['Total_boarding_time']
+
+R_mean = time_measures[6]['random']['mean']['board_time_cum']
+R_95 = time_measures[6]['random']['95thpercentile']['board_time_cum']
+R_tot = time_measures[6]['random']['Total_boarding_time']
+
 ###############################################################################
+gather = [BF_mean, BF_95, BF_tot,WMA_mean, WMA_95, WMA_tot,RZ_mean, RZ_95, RZ_tot,O_mean, O_95, O_tot,PO_mean, PO_95, PO_tot,RP_mean, RP_95, RP_tot,R_mean, R_95, R_tot]
+export_data = zip_longest(*gather, fillvalue='')
+with open('distributions2.csv', 'w', newline='') as f:
+    writer = csv.writer(f)
+    writer.writerow(("BF_mean", "BF_95", "BF_tot","WMA_mean", "WMA_95", "WMA_tot","RZ_mean", "RZ_95", "RZ_tot","O_mean", "O_95", "O_tot","PO_mean", "PO_95", "PO_tot","RP_mean", "RP_95", "RP_tot","R_mean", "R_95", "R_tot"))
+    writer.writerows(export_data)
